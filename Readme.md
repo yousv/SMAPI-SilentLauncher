@@ -2,7 +2,7 @@
 
 Tired of the console window sitting open every time you launch Stardew Valley with SMAPI? This replaces it with a small overlay that fades in while the game loads, then disappears. Nothing else changes.
 
-**[> Download on Nexus Mods](https://www.nexusmods.com/stardewvalley/mods/MODID)**
+**[> Download on Nexus Mods](https://www.nexusmods.com/stardewvalley/mods/48315)**
 
 **Windows only. Requires SMAPI.**
 
