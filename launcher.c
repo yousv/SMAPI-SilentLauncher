@@ -9,11 +9,11 @@
 #define FADE_DURATION_MS     350
 #define LAUNCH_TIMEOUT_MS    30000
 #define POPUP_DISPLAY_MS     5000
-#define OVERLAY_MARGIN_PX    20
 #define OVERLAY_WIDTH_PX     280
 #define OVERLAY_HEIGHT_PX    60
 #define CORNER_RADIUS_PX     10
 #define FADE_ALPHA_MAX       215
+#define TOP_OFFSET_PERCENT   10
 
 typedef enum {
     OVERLAY_LAUNCHING,
@@ -132,14 +132,6 @@ static LRESULT CALLBACK OverlayWindowProc(HWND window, UINT message, WPARAM wPar
             DeleteObject(background);
 
             COLORREF accent = GetAccentColor(g_overlayState);
-
-            HPEN   borderPen  = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
-            HPEN   prevPen    = (HPEN)SelectObject(dc, borderPen);
-            HBRUSH prevBrush  = (HBRUSH)SelectObject(dc, GetStockObject(NULL_BRUSH));
-            RoundRect(dc, 0, 0, clientRect.right, clientRect.bottom, CORNER_RADIUS_PX, CORNER_RADIUS_PX);
-            SelectObject(dc, prevPen);
-            SelectObject(dc, prevBrush);
-            DeleteObject(borderPen);
 
             RECT textRect    = clientRect;
             textRect.bottom -= 5;
@@ -263,15 +255,21 @@ static void ShowOverlay(HINSTANCE instance, OverlayState initialState, const wch
     g_pollAccumMs       = 0;
 
     WNDCLASSW windowClass   = {0};
+    windowClass.style       = CS_DROPSHADOW;
     windowClass.lpfnWndProc = OverlayWindowProc;
     windowClass.hInstance   = instance;
     windowClass.lpszClassName = L"SmapiLauncherOverlay";
     RegisterClassW(&windowClass);
 
+    int screenWidth  = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    int windowX      = (screenWidth - OVERLAY_WIDTH_PX) / 2;
+    int windowY      = screenHeight * TOP_OFFSET_PERCENT / 100;
+
     g_overlayWindow = CreateWindowExW(
         WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT,
         L"SmapiLauncherOverlay", L"", WS_POPUP,
-        OVERLAY_MARGIN_PX, OVERLAY_MARGIN_PX, OVERLAY_WIDTH_PX, OVERLAY_HEIGHT_PX,
+        windowX, windowY, OVERLAY_WIDTH_PX, OVERLAY_HEIGHT_PX,
         NULL, NULL, instance, NULL
     );
 
@@ -288,6 +286,53 @@ static void ShowOverlay(HINSTANCE instance, OverlayState initialState, const wch
         TranslateMessage(&message_);
         DispatchMessageW(&message_);
     }
+}
+
+static BOOL FolderContainsDll(const char *folderPath) {
+    char searchPattern[MAX_PATH];
+    snprintf(searchPattern, sizeof(searchPattern), "%s\\*.dll", folderPath);
+    WIN32_FIND_DATAA findData;
+    HANDLE findHandle = FindFirstFileA(searchPattern, &findData);
+    if (findHandle == INVALID_HANDLE_VALUE) return FALSE;
+    FindClose(findHandle);
+    return TRUE;
+}
+
+static int CountModsInFolder(const char *modsFolderPath) {
+    char searchPattern[MAX_PATH];
+    snprintf(searchPattern, sizeof(searchPattern), "%s\\*", modsFolderPath);
+    WIN32_FIND_DATAA findData;
+    HANDLE findHandle = FindFirstFileA(searchPattern, &findData);
+    if (findHandle == INVALID_HANDLE_VALUE) return 0;
+
+    int modCount = 0;
+    do {
+        if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
+        if (strcmp(findData.cFileName, ".") == 0 || strcmp(findData.cFileName, "..") == 0) continue;
+
+        char subFolderPath[MAX_PATH];
+        snprintf(subFolderPath, sizeof(subFolderPath), "%s\\%s", modsFolderPath, findData.cFileName);
+        if (FolderContainsDll(subFolderPath)) modCount++;
+    } while (FindNextFileA(findHandle, &findData));
+
+    FindClose(findHandle);
+    return modCount;
+}
+
+static int CountInstalledMods(void) {
+    char modsFolderPath[MAX_PATH];
+
+    GetPathNextToLauncher(modsFolderPath, sizeof(modsFolderPath), "Mods");
+    if (GetFileAttributesA(modsFolderPath) != INVALID_FILE_ATTRIBUTES) {
+        return CountModsInFolder(modsFolderPath);
+    }
+
+    GetPathNextToLauncher(modsFolderPath, sizeof(modsFolderPath), "mods");
+    if (GetFileAttributesA(modsFolderPath) != INVALID_FILE_ATTRIBUTES) {
+        return CountModsInFolder(modsFolderPath);
+    }
+
+    return 0;
 }
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR commandLineArgs, int showCommand) {
@@ -312,13 +357,17 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
         return 1;
     }
 
+    int modCount = CountInstalledMods();
+    wchar_t launchingMessage[64];
+    swprintf(launchingMessage, 64, L"Launching SMAPI with %d mods", modCount);
+
     strncpy(g_launchArgs, commandLineArgs, sizeof(g_launchArgs) - 1);
 
     if (!LaunchSmapi(commandLineArgs, FALSE, &g_smapiProcess, &g_smapiProcessId)) {
         return 1;
     }
 
-    ShowOverlay(instance, OVERLAY_LAUNCHING, L"Launching SMAPI", LAUNCH_TIMEOUT_MS);
+    ShowOverlay(instance, OVERLAY_LAUNCHING, launchingMessage, LAUNCH_TIMEOUT_MS);
 
     if (g_smapiProcess) CloseHandle(g_smapiProcess);
     return 0;

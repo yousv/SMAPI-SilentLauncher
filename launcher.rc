@@ -1,24 +1,35 @@
 #include <winver.h>
 
-IDI_ICON1 ICON "icon.ico"
+#define VERSION_MAJOR 1
+#define VERSION_MINOR 1
+#define VERSION_PATCH 0
+
+#define VER_STRINGIFY2(x) #x
+#define VER_STRINGIFY(x) VER_STRINGIFY2(x)
+#define VERSION_STRING VER_STRINGIFY(VERSION_MAJOR) "." VER_STRINGIFY(VERSION_MINOR) "." VER_STRINGIFY(VERSION_PATCH) ".0"
+
+101 ICON "icon.ico"
 
 1 VERSIONINFO
-FILEVERSION 1,0,0,0
-PRODUCTVERSION 1,0,0,0
+FILEVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_PATCH,0
+PRODUCTVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_PATCH,0
 FILEOS 0x40004
 FILETYPE 0x1
+FILEFLAGSMASK 0x3fL
+FILEFLAGS 0x0L
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
     BLOCK "040904b0"
     BEGIN
-      VALUE "CompanyName", "SMAPI Launcher"
-      VALUE "FileDescription", "SMAPI Launcher"
-      VALUE "FileVersion", "1.0.0.0"
-      VALUE "InternalName", "SMAPILauncher"
-      VALUE "OriginalFilename", "SMAPILauncher.exe"
-      VALUE "ProductName", "SMAPI Launcher"
-      VALUE "ProductVersion", "1.0.0.0"
+      VALUE "CompanyName", "Yousv"
+      VALUE "FileDescription", "SMAPI SilentLauncher"
+      VALUE "FileVersion", VERSION_STRING
+      VALUE "InternalName", "SMAPISilentLauncher"
+      VALUE "LegalCopyright", "Yousv"
+      VALUE "OriginalFilename", "SMAPISilentLauncher.exe"
+      VALUE "ProductName", "SMAPI SilentLauncher"
+      VALUE "ProductVersion", VERSION_STRING
     END
   END
   BLOCK "VarFileInfo"
