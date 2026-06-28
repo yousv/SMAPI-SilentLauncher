@@ -71,5 +71,5 @@ Requires MSVC (`cl` and `rc` on your PATH — run from a Developer Command Promp
 
 ```
 rc launcher.rc
-cl launcher.c launcher.res /link user32.lib gdi32.lib /subsystem:windows
+cl launcher.c launcher.res "/Fe:SMAPI SilentLauncher.exe" /link user32.lib gdi32.lib /subsystem:windows
 ```
